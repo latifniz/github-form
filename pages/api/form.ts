@@ -1,16 +1,41 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { query } from '../../lib/db'; // Adjust the path as necessary
 
-async function testCredentials(githubUsername: string, githubToken: string): Promise<boolean> {
-  const response = await fetch('https://api.github.com/user', {
-    method: 'GET',
-    headers: {
-      'Authorization': `token ${githubToken}`,
-      'Accept': 'application/vnd.github.v3+json',
-    },
-  });
-  return response.ok; // Returns true if the credentials are valid, false otherwise
+async function testCredentials(githubUsername: string, githubEmail: string, githubToken: string): Promise<boolean> {
+  try {
+    // Make a request to the GitHub API to get the user information using the provided token
+    const response = await fetch('https://api.github.com/user', {
+      method: 'GET',
+      headers: {
+        'Authorization': `token ${githubToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    });
+
+    // If the response is not OK (status code 2xx), return false
+    if (!response.ok) {
+      console.log('Invalid token or request failed');
+      return false;
+    }
+
+    const userData = await response.json();
+
+    // Check if the username and email match the authenticated user data
+    if (userData.login !== githubUsername) {
+      console.log('Username does not match');
+      return false;
+    }
+
+    // The token, username, and email are valid
+    console.log('Credentials are valid');
+    return true;
+
+  } catch (error) {
+    console.error('Error verifying credentials:', error);
+    return false;
+  }
 }
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
@@ -18,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       // Test GitHub credentials
-      const areCredentialsValid = await testCredentials(githubUsername, githubToken);
+      const areCredentialsValid = await testCredentials(githubUsername,githubEmail, githubToken);
       if (!areCredentialsValid) {
         return res.status(401).json({
           error: 'Invalid GitHub credentials. Please check your username and token.',
@@ -26,17 +51,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Check if the email already exists
-      const existingEmail = await query(
+      const existingUser = await query(
         `
-        SELECT 1 FROM upload.github_accounts WHERE githubUserEmail = $1
+        SELECT githubUserEmail, githubUsername 
+        FROM upload.github_accounts 
+        WHERE githubUserEmail = $1 OR githubUsername = $2
         `,
-        [githubEmail]
+        [githubEmail, githubUsername]
       );
-
       // Return an error if the email exists
-      if (existingEmail!.rows.length > 0) {
+      if (existingUser!.rows.length > 0) {
         return res.status(400).json({
-          error: 'An account with this email already exists. Please use a different email address.',
+          error: 'An account already exists. Please use a different account.',
         });
       }
 

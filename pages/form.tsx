@@ -40,7 +40,7 @@ export default function SubmitPage() {
       if (response.ok) {
         alert('Submitted successfully!');
       } else if (response.status === 400){
-        alert('An account with this email already exists');
+        alert('An account already exists');
       }
       else if(response.status === 401) {
         alert('Invalid GitHub credentials. Please check your username and token.');

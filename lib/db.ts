@@ -1,10 +1,10 @@
 import { Pool } from 'pg';
-import fs from 'fs';
-import path from 'path';
 
 const isLocalhost = process.env.PG_HOST === 'localhost';
-const caPath = path.join(process.cwd(), 'certs/ca.pem');
-const ca = fs.readFileSync(caPath).toString();
+
+// const caPath = path.join(__dirname, '../certs/ca.pem'); // Use __dirname instead of process.cwd()
+const ca = Buffer.from(process.env.VERCEL_CA_PEM!, 'base64').toString();
+
 
 export const pool = new Pool({
   host: process.env.PG_HOST,
